@@ -1,0 +1,12 @@
+name: Run Tests
+description: Runs tests for the project.
+
+inputs:
+  build-configuration:
+    description: Build configuration (e.g., Debug, Release)
+    required: false
+    default: Debug
+
+runs:
+  using: node24
+  main: dist/index.js

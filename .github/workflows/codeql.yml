@@ -1,0 +1,64 @@
+name: "CodeQL"
+
+permissions:
+  contents: read
+
+on:
+  push:
+    branches:
+      - main
+      - 'feature/**'
+    paths-ignore:
+      - .editorconfig
+      - .gitattributes
+      - .gitignore
+      - package.json
+      - package-lock.json
+      - LICENSE
+      - README
+  pull_request:
+    branches:
+      - main
+      - 'feature/**'
+    paths-ignore:
+      - .editorconfig
+      - .gitattributes
+      - .gitignore
+      - package.json
+      - package-lock.json
+      - LICENSE
+      - README
+  schedule:
+    - cron: '0 0 * * *'
+
+jobs:
+  analyze:
+    name: Analyze (${{ matrix.language }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - language: actions
+            build-mode: none
+          - language: javascript
+            build-mode: none
+    permissions:
+      actions: read
+      contents: read
+      security-events: write
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+
+      - name: Initialize CodeQL
+        uses: github/codeql-action/init@v4
+        with:
+          languages: ${{ matrix.language }}
+          build-mode: ${{ matrix.build-mode }}
+          dependency-caching: true
+
+      - name: Perform CodeQL Analysis
+        uses: github/codeql-action/analyze@v4
+        with:
+          category: "/language:${{ matrix.language }}"

@@ -1,0 +1,15 @@
+name: Read Git Tags
+description: Reads the git tags from the repository and sets them as an output variable.
+
+inputs:
+  github_token:
+    description: GitHub token for authentication (optional, used for private repositories)
+    required: true
+
+outputs:
+  tags:
+    description: Git tags in the repository, grouped by the project names.
+
+runs:
+  using: node24
+  main: dist/index.js

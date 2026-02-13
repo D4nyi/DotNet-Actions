@@ -1,0 +1,15 @@
+name: Read Project Versions
+description: Reads the versions of the .NET projects in the repository and outputs them as a JSON object.
+
+inputs:
+  source_dir:
+    description: "The source directory to scan for .csproj files (default: current directory)."
+    required: false
+
+outputs:
+  versions:
+    description: "A JSON object mapping project names to their versions."
+
+runs:
+  using: node24
+  main: dist/index.js
