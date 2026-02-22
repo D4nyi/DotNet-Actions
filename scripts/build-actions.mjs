@@ -44,7 +44,7 @@ for (const name of actions) {
             bundle: true,
             platform: 'node',
             target: 'node24',
-            format: 'esm',
+            format: 'cjs',
             external: ['node:path', 'node:fs'],
             outfile,
             sourcemap,
