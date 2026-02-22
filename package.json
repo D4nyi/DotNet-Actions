@@ -2,7 +2,7 @@
   "name": "dotnet-workflows",
   "version": "1.0.0",
   "description": "",
-  "type": "module",
+  "type": "commonjs",
   "engines": {
     "node": ">=24.0.0"
   },
