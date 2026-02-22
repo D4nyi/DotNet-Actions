@@ -1,5 +1,5 @@
 import { build } from 'esbuild';
-import { access, mkdir, constants } from 'node:fs/promises';
+import { access, mkdir, constants, unlink } from 'node:fs/promises';
 import { resolve, join } from 'node:path';
 
 const mode = process.argv[2] === 'production' ? 'production' : 'development';
@@ -26,15 +26,24 @@ async function exists(path) {
 for (const name of actions) {
     const entry = resolve(name, 'src', 'index.ts');
 
-    if (!exists(entry)) {
+    if (!(await exists(entry))) {
         // skip missing action folders
         console.warn(`Skipping ${name}: entry not found at ${entry}`);
         continue;
     }
 
     const outdir = resolve(name, 'dist');
-    await mkdir(outdir, { recursive: true });
+    if (!(await exists(outdir))) {
+        await mkdir(outdir, { recursive: true });
+    }
     const outfile = join(outdir, 'index.js');
+
+    const sourcemapPath = join(outdir, 'index.js.map');
+    if (!sourcemap && (await exists(sourcemapPath))) {
+        await unlink(sourcemapPath);
+    }
+
+    const tsConfigPath = resolve('.', 'tsconfig.json');
 
     console.log(`Building ${name} -> ${outfile} (${mode})`);
 
@@ -49,7 +58,12 @@ for (const name of actions) {
             outfile,
             sourcemap,
             minify,
-            logLevel: 'info'
+            logLevel: 'info',
+            allowOverwrite: true,
+            charset: 'utf8',
+            treeShaking: true,
+            tsconfig: tsConfigPath,
+            write: true
         });
     } catch (err) {
         console.error(`Failed to build ${name}:`, err);
@@ -57,5 +71,4 @@ for (const name of actions) {
     }
 }
 
-// indicate success
 console.log('Build complete');
