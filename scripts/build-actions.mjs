@@ -28,7 +28,6 @@ for (const name of actions) {
 
     if (!exists(entry)) {
         // skip missing action folders
-        // eslint-disable-next-line no-console
         console.warn(`Skipping ${name}: entry not found at ${entry}`);
         continue;
     }
@@ -52,12 +51,10 @@ for (const name of actions) {
             logLevel: 'info'
         });
     } catch (err) {
-        // eslint-disable-next-line no-console
         console.error(`Failed to build ${name}:`, err);
         process.exitCode = 1;
     }
 }
 
 // indicate success
-// eslint-disable-next-line no-console
 console.log('Build complete');
