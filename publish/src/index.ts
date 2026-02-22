@@ -75,7 +75,7 @@ function parseInputs(): Inputs {
     if (isStringNullOrWhitespace(versionsRaw)) {
         throw new Error('Versions input is invalid.');
     }
-    
+
     const tagsRaw = getInput('tags', { required: true });
     if (isStringNullOrWhitespace(tagsRaw)) {
         throw new Error('Tags input is invalid.');

@@ -3,22 +3,22 @@ description: Publishes the project.
 
 inputs:
   nuget_api_key:
-    description: 'NuGet API key used to publish the package to NuGet.org'
+    description: "NuGet API key used to publish the package to NuGet.org"
     required: true
   github_token:
-    description: 'GitHub token used to create git tags'
+    description: "GitHub token used to create git tags"
     required: true
   tags:
-    description: 'Currently existing git tags'
+    description: "Currently existing git tags"
     required: true
   versions:
-    description: 'Versions of the projects'
+    description: "Versions of the projects"
     required: true
   artifact_id:
-    description: 'Artifact ID of the nuget package uploaded to GitHub'
+    description: "Artifact ID of the nuget package uploaded to GitHub"
     required: true
   artifact_digest:
-    description: 'Digest of the artifact uploaded to GitHub'
+    description: "Digest of the artifact uploaded to GitHub"
     required: false
 
 runs:

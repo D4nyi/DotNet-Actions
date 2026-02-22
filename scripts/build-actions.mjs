@@ -45,6 +45,7 @@ for (const name of actions) {
             platform: 'node',
             target: 'node24',
             format: 'esm',
+            external: ['node:path', 'node:fs'],
             outfile,
             sourcemap,
             minify,
