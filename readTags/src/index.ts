@@ -1,6 +1,7 @@
 import { info, getInput, setOutput, setFailed, setSecret } from "@actions/core";
 import { context, getOctokit } from "@actions/github";
 import { isStringNullOrWhitespace } from "../../common/stringUtils.js";
+import { Tags } from "../../common/types.js";
 
 async function getTags(): Promise<void> {
     if (context.eventName !== 'workflow_dispatch') {
@@ -41,7 +42,7 @@ async function getTags(): Promise<void> {
             }
 
             return acc;
-        }, {} as { [key: string]: string[] });
+        }, {} as Tags);
 
         info(`Status: ${status}`);
         info(`Tags: ${JSON.stringify(tags, null, 2)}`);

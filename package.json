@@ -19,7 +19,6 @@
     "run:local": "act workflow_dispatch -s github_token=secret -P ubuntu-latest=node:24-trixie"
   },
   "dependencies": {
-    "@actions/artifact": "^6.1.0",
     "@actions/core": "^3.0.0",
     "@actions/exec": "^3.0.0",
     "@actions/github": "^9.0.0",
