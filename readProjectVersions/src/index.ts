@@ -1,9 +1,10 @@
-import { info, warning, setFailed, getInput, setOutput } from "@actions/core";
+import { info, warning, setFailed, setOutput } from "@actions/core";
 import { readdirSync, readFileSync } from 'node:fs';
 import { sep, join } from 'node:path';
 import { XMLParser } from 'fast-xml-parser';
 import { ignoreCaseCompare, isStringNullOrWhitespace } from "../../common/stringUtils";
 import { Versions } from "../../common/types";
+import { getInput } from "../../common/getInput";
 
 function findCsprojFiles(dir: string): string | string[] {
     const elements = readdirSync(dir, { withFileTypes: true });
@@ -83,7 +84,7 @@ function getFileName(filePath: string): string {
     return filePath.substring(slash + 1, dot);
 }
 
-const sourceDir = getInput('source_dir') || process.cwd();
+const sourceDir = getInput('source_dir', process.cwd());
 
 const files = findCsprojFiles(sourceDir);
 

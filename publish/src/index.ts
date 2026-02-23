@@ -1,10 +1,11 @@
-import { info, warning, getInput, setFailed, setSecret } from "@actions/core";
+import { info, warning, setFailed, setSecret } from "@actions/core";
 import { context, getOctokit } from "@actions/github";
 import { exec } from "@actions/exec";
 import { Versions, Tags } from "../../common/types.js";
 import { isStringNullOrWhitespace } from "../../common/stringUtils.js";
 import { checkDotNet } from "../../common/checkDotNet.js";
 import { findFileByExtension } from "../../common/findFileByExtension.js";
+import { getRequiredInput } from "../../common/getInput.js";
 
 interface Inputs {
     versions: Versions;
@@ -27,7 +28,7 @@ async function nugetPackage(): Promise<void> {
 async function nugetPush(): Promise<void> {
     await checkDotNet();
 
-    const nugetKey = getInput('nuget_api_key', { required: true });
+    const nugetKey = getRequiredInput('nuget_api_key');
     setSecret(nugetKey);
 
     if (isStringNullOrWhitespace(nugetKey)) {

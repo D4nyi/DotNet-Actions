@@ -14,12 +14,6 @@ inputs:
   versions:
     description: "Versions of the projects"
     required: true
-  artifact_id:
-    description: "Artifact ID of the nuget package uploaded to GitHub"
-    required: true
-  artifact_digest:
-    description: "Digest of the artifact uploaded to GitHub"
-    required: false
 
 runs:
   using: node24

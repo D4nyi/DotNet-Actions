@@ -1,7 +1,8 @@
-import { info, getInput, setFailed } from "@actions/core";
+import { info, setFailed } from "@actions/core";
 import { exec } from "@actions/exec";
 import { findFileByExtension } from "../../common/findFileByExtension.js";
 import { checkDotNet } from "../../common/checkDotNet.js";
+import { getInput } from "../../common/getInput.js";
 
 async function runDotNet(): Promise<void> {
     await checkDotNet();
@@ -13,7 +14,7 @@ async function runDotNet(): Promise<void> {
         return;
     }
 
-    const buildConfiguration = getInput("build-configuration") || "Debug";
+    const buildConfiguration = getInput("build_configuration", "Debug");
 
     info(`Build Configuration: ${buildConfiguration}`);
 
