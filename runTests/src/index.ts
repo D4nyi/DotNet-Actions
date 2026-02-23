@@ -1,15 +1,10 @@
 import { info, getInput, setFailed } from "@actions/core";
 import { exec } from "@actions/exec";
 import { findFileByExtension } from "../../common/findFileByExtension.js";
+import { checkDotNet } from "../../common/checkDotNet.js";
 
-async function runDotNet() {
-    const dotnetInstalled = await exec("which dotnet", null!, { ignoreReturnCode: true });
-
-    info(`.NET Installed: ${!dotnetInstalled}`);
-
-    if (dotnetInstalled !== 0) {
-        throw new Error(".NET CLI is not installed or not found in PATH.");
-    }
+async function runDotNet(): Promise<void> {
+    await checkDotNet();
 
     const slnFile = findFileByExtension(process.env.GITHUB_WORKSPACE || process.cwd(), ".slnx");
 

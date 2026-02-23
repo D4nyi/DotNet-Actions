@@ -1,10 +1,10 @@
-import { debug, info, warning, getInput, setFailed, setSecret } from "@actions/core";
+import { info, warning, getInput, setFailed, setSecret } from "@actions/core";
 import { context, getOctokit } from "@actions/github";
 import { exec } from "@actions/exec";
-import { resolve, } from 'node:path';
-import { DefaultArtifactClient, type DownloadArtifactOptions, type FindOptions } from '@actions/artifact'
 import { Versions, Tags } from "../../common/types.js";
 import { isStringNullOrWhitespace } from "../../common/stringUtils.js";
+import { checkDotNet } from "../../common/checkDotNet.js";
+import { findFileByExtension } from "../../common/findFileByExtension.js";
 
 interface Inputs {
     versions: Versions;
@@ -12,14 +12,20 @@ interface Inputs {
     githubToken: string;
 }
 
-async function runDotNet() {
-    const dotnetInstalled = await exec("which dotnet", null!, { ignoreReturnCode: true });
+async function nugetPackage(): Promise<void> {
+    const slnFile = findFileByExtension(process.env.GITHUB_WORKSPACE || process.cwd(), ".slnx");
 
-    info(`.NET Installed: ${!dotnetInstalled}`);
-
-    if (dotnetInstalled !== 0) {
-        throw new Error(".NET CLI is not installed or not found in PATH.");
+    if (typeof slnFile !== "string") {
+        setFailed("No .slnx file found in the repository.");
+        return;
     }
+
+    await exec("dotnet", ["restore", slnFile]);
+    await exec("dotnet", ["pack", slnFile, "--no-restore", "--nologo", "-o", "output", "-c", "Release"]);
+}
+
+async function nugetPush(): Promise<void> {
+    await checkDotNet();
 
     const nugetKey = getInput('nuget_api_key', { required: true });
     setSecret(nugetKey);
@@ -28,46 +34,7 @@ async function runDotNet() {
         throw new Error('NuGet API key is invalid.');
     }
 
-    await exec("dotnet", ["nuget", "push", "output/*.nupkg", "--skip-duplicate", "--source", "https://api.nuget.org/v3/index.json", "--api-key", nugetKey]);
-}
-
-async function downloadArtifact(): Promise<void> {
-    const artifactId = getInput('artifact_id', { required: true });
-    const artifactDigest = getInput('artifact_digest', { required: false });
-
-    const numericId = parseInt(artifactId, 10);
-    if (isNaN(numericId)) {
-        throw new Error(`Invalid artifact ID: '${artifactId}'. Must be a number.`)
-    }
-
-    const resolvedPath = resolve('./output')
-    debug(`Resolved path is ${resolvedPath}`)
-
-    const options: DownloadArtifactOptions & FindOptions = {
-        path: resolvedPath,
-        expectedHash: artifactDigest,
-        skipDecompress: false,
-        findBy: {
-            token: null!, // Not needed for artifacts within the same run
-            workflowRunId: context.runId,
-            repositoryOwner: context.repo.owner,
-            repositoryName: context.repo.repo,
-        }
-    }
-
-    const artifact = new DefaultArtifactClient();
-
-    const result = await artifact.downloadArtifact(numericId, options);
-
-    if (result.digestMismatch) {
-        warning(`Artifact '${artifactId}' digest validation failed. Please verify the integrity of the artifact.`);
-    }
-
-    if (result.downloadPath != resolvedPath) {
-        warning(`Downloaded path '${result.downloadPath}' does not match the expected path '${resolvedPath}'. This may indicate an issue with artifact download.`);
-    }
-
-    info('Download artifact has finished successfully')
+    await exec("dotnet", ["nuget", "push", "output/*", "--skip-duplicate", "--source", "https://api.nuget.org/v3/index.json", "--api-key", nugetKey]);
 }
 
 function parseInputs(): Inputs {
@@ -94,7 +61,7 @@ function parseInputs(): Inputs {
     };
 }
 
-async function createTag() {
+async function createTag(): Promise<void> {
     const { versions, tags, githubToken } = parseInputs();
 
     const createRef = getOctokit(githubToken).rest.git.createRef;
@@ -138,8 +105,9 @@ async function createTag() {
     }
 }
 
-downloadArtifact()
-    .then(runDotNet)
+checkDotNet()
+    .then(nugetPackage)
+    .then(nugetPush)
     .then(createTag)
     .catch(err => {
         setFailed(`Action failed with error: ${err}`);

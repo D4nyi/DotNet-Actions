@@ -7,7 +7,6 @@ const minify = mode === 'production';
 const sourcemap = mode === 'development';
 
 const actions = [
-    'package',
     'publish',
     'readProjectVersions',
     'readTags',
