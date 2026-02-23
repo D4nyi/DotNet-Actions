@@ -7,7 +7,7 @@ import { getInput } from "../../common/getInput.js";
 async function runDotNet(): Promise<void> {
     await checkDotNet();
 
-    const slnFile = findFileByExtension(process.env.GITHUB_WORKSPACE || process.cwd(), ".slnx");
+    const slnFile = await findFileByExtension(process.env.GITHUB_WORKSPACE || process.cwd(), ".slnx");
 
     if (typeof slnFile !== "string") {
         setFailed("No .slnx file found in the repository.");
@@ -23,4 +23,7 @@ async function runDotNet(): Promise<void> {
     await exec("dotnet", ["test", slnFile, "--no-build", "--no-restore", "--nologo", "-c", buildConfiguration]);
 }
 
-runDotNet();
+runDotNet()
+    .catch(err => {
+        setFailed(`Action failed with error: ${err}`);
+    });

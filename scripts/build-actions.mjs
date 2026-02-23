@@ -53,7 +53,7 @@ for (const name of actions) {
             platform: 'node',
             target: 'node24',
             format: 'cjs',
-            external: ['node:path', 'node:fs'],
+            external: ['node:path', 'node:fs', 'node:fs/promises'],
             outfile,
             sourcemap,
             minify,

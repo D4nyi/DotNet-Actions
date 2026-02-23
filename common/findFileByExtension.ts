@@ -1,8 +1,8 @@
-import { readdirSync } from 'node:fs';
+import { readdir } from 'node:fs/promises';
 import { join } from "node:path";
 
-export function findFileByExtension(dir: string, extension: string): string | string[] | null {
-    const elements = readdirSync(dir, { withFileTypes: true });
+export async function findFileByExtension(dir: string, extension: string): Promise<string | string[] | null> {
+    const elements = await readdir(dir, { withFileTypes: true });
 
     const grouped = Object.groupBy(elements, element => {
         if (element.name.endsWith(extension)) {
@@ -27,7 +27,7 @@ export function findFileByExtension(dir: string, extension: string): string | st
     const results: string[] = [];
 
     for (const element of grouped.directories) {
-        const subResult = findFileByExtension(join(element.parentPath, element.name), extension);
+        const subResult = await findFileByExtension(join(element.parentPath, element.name), extension);
 
         if (typeof subResult === "string") {
             results.push(subResult);

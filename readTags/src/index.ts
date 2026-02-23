@@ -1,7 +1,8 @@
-import { info, getInput, setOutput, setFailed, setSecret } from "@actions/core";
+import { info, setOutput, setFailed, setSecret } from "@actions/core";
 import { context, getOctokit } from "@actions/github";
 import { isStringNullOrWhitespace } from "../../common/stringUtils.js";
 import { Tags } from "../../common/types.js";
+import { getRequiredInput } from "../../common/getInput.js";
 
 async function getTags(): Promise<void> {
     if (context.eventName !== 'workflow_dispatch') {
@@ -9,7 +10,7 @@ async function getTags(): Promise<void> {
         return;
     }
 
-    const token = getInput('github_token', { required: true });
+    const token = getRequiredInput('github_token');
     setSecret(token);
 
     if (isStringNullOrWhitespace(token)) {
@@ -53,4 +54,7 @@ async function getTags(): Promise<void> {
     }
 }
 
-getTags();
+getTags()
+    .catch(err => {
+        setFailed(`Action failed with error: ${err}`);
+    });

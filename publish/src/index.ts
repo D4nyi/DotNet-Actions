@@ -14,7 +14,7 @@ interface Inputs {
 }
 
 async function nugetPackage(): Promise<void> {
-    const slnFile = findFileByExtension(process.env.GITHUB_WORKSPACE || process.cwd(), ".slnx");
+    const slnFile = await findFileByExtension(process.env.GITHUB_WORKSPACE || process.cwd(), ".slnx");
 
     if (typeof slnFile !== "string") {
         setFailed("No .slnx file found in the repository.");
