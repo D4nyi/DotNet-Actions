@@ -5,8 +5,11 @@ import { XMLParser } from 'fast-xml-parser';
 import { ignoreCaseCompare, isStringNullOrWhitespace } from "../../common/stringUtils";
 import { Versions } from "../../common/types";
 import { getInput } from "../../common/getInput";
+import { exec } from "@actions/exec";
 
 async function findCsprojFiles(dir: string): Promise<string | string[]> {
+    await exec(`ls -lah ${dir}`);
+
     const elements = await readdir(dir, { withFileTypes: true });
 
     const grouped = Object.groupBy(elements, element => {
