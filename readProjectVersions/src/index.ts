@@ -2,6 +2,8 @@ import { info, warning, setFailed, getInput, setOutput } from "@actions/core";
 import { readdirSync, readFileSync } from 'node:fs';
 import { sep, join } from 'node:path';
 import { XMLParser } from 'fast-xml-parser';
+import { ignoreCaseCompare, isStringNullOrWhitespace } from "../../common/stringUtils";
+import { Versions } from "../../common/types";
 
 function findCsprojFiles(dir: string): string | string[] {
     const elements = readdirSync(dir, { withFileTypes: true });
@@ -50,6 +52,11 @@ function extractVersionFromParsedProject(parsed: any): string | null {
     const propertyGroups = project.PropertyGroup ?? project.propertyGroup;
     if (!propertyGroups) return null;
 
+    const isPackable = propertyGroups.IsPackable ?? propertyGroups.isPackable;
+    if (!isStringNullOrWhitespace(isPackable) && ignoreCaseCompare(isPackable, "false")) {
+        return null;
+    }
+
     return propertyGroups.Version ?? propertyGroups.version;
 }
 
@@ -85,7 +92,7 @@ if (files.length === 0) {
     process.exit(1);
 }
 
-const versions: { [key: string]: string } = {};
+const versions: Versions = {};
 
 for (const file of files) {
     const version = getVersionFromCsproj(file);

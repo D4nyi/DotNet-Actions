@@ -30,3 +30,7 @@ export function isStringNullOrEmpty(value: unknown): boolean {
 export function isStringNullOrWhitespace(value: unknown): boolean {
     return !isString(value) || (value as string).trim() === '';
 }
+
+export function ignoreCaseCompare(s1: string, s2: string): boolean {
+    return s1.localeCompare(s2, undefined, { sensitivity: 'accent' }) === 0;
+}
