@@ -81,16 +81,16 @@ async function createTag(): Promise<void> {
             continue;
         }
 
-        const exists = packageTags.includes(version);
+        const exists = packageTags.includes(`v${version}`);
 
         if (exists) {
-            info(`Tag exists: ${version}`);
+            info(`Tag exists: v${version}`);
             continue;
         }
 
         const ref = singlePackage
-            ? `refs/tags/${project}/v${version}`
-            : `refs/tags/v${version}`;
+            ? `refs/tags/v${version}`
+            : `refs/tags/${project}/v${version}`;
 
         try {
             const { status, data } = await createRef({

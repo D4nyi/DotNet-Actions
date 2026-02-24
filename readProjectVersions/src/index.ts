@@ -56,13 +56,13 @@ async function createOutput(files: string[]) {
         const fileName = getFileName(file);
 
         if (version) {
-            info(`${fileName} -> Version: ${version}`);
-
             versions[fileName] = version;
         } else {
             warning(`${fileName} -> Version: (not found)`);
         }
     }
+
+    info(`Versions: ${JSON.stringify(versions, undefined, 2)}`);
 
     setOutput('versions', JSON.stringify(versions));
 }
