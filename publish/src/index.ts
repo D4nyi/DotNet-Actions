@@ -6,11 +6,16 @@ import { isStringNullOrWhitespace } from '../../common/stringUtils.js';
 import { checkDotNet } from '../../common/checkDotNet.js';
 import { findFileByExtension } from '../../common/findFileByExtension.js';
 import { getRequiredInput } from '../../common/getInput.js';
+import { readdir } from 'node:fs/promises';
 
 interface Inputs {
     versions: Versions;
     tags: Tags;
     githubToken: string;
+}
+
+async function hasSymbolPackage() {
+    return (await readdir('output')).some(el => el.endsWith('.snupkg'));
 }
 
 async function nugetPackage(): Promise<void> {
@@ -21,7 +26,8 @@ async function nugetPackage(): Promise<void> {
     }
 
     await exec('dotnet', ['restore', slnFile]);
-    await exec('dotnet', ['pack', slnFile, '--no-restore', '--nologo', '-o', 'output', '-c', 'Release']);
+    await exec('dotnet', ['build', slnFile, '--no-restore', '--nologo', '-c', 'Release']);
+    await exec('dotnet', ['pack', slnFile, '--no-restore', '--no-build', '--nologo', '-o', 'output', '-c', 'Release']);
 }
 
 async function nugetPush(): Promise<void> {
@@ -32,7 +38,12 @@ async function nugetPush(): Promise<void> {
         throw new Error('NuGet API key is invalid.');
     }
 
-    await exec('dotnet', ['nuget', 'push', 'output/*', '--api-key', nugetKey, '--source', 'https://api.nuget.org/v3/index.json', '--skip-duplicate']);
+    await exec('dotnet', ['nuget', 'push', 'output/*.nupkg', '--api-key', nugetKey, '--source', 'https://api.nuget.org/v3/index.json', '--skip-duplicate']);
+
+    const hasSymbol = await hasSymbolPackage();
+    if (hasSymbol) {
+        await exec('dotnet', ['nuget', 'push', 'output/*.snupkg', '--api-key', nugetKey, '--source', 'https://symbols.nuget.org/download/symbols', '--skip-duplicate']);
+    }
 }
 
 function parseInputs(): Inputs {
