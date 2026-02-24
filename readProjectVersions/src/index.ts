@@ -1,50 +1,11 @@
 import { info, warning, setFailed, setOutput } from '@actions/core';
-import { readdir, readFile } from 'node:fs/promises';
-import { sep, join, resolve } from 'node:path';
+import { readFile } from 'node:fs/promises';
+import { sep, resolve } from 'node:path';
 import { XMLParser } from 'fast-xml-parser';
-import { ignoreCaseCompare, isStringNullOrWhitespace } from '../../common/stringUtils';
+import { ignoreCaseCompare } from '../../common/stringUtils';
 import { Versions } from '../../common/types';
 import { getInput } from '../../common/getInput';
-
-async function findCsprojFiles(dir: string): Promise<string | string[]> {
-    const elements = await readdir(dir, { withFileTypes: true });
-
-    const grouped = Object.groupBy(elements, element => {
-        const name = element.name;
-
-        if (name !== 'bin' && name !== 'obj' && name !== '.git' && element.isDirectory()) {
-            return 'directories';
-        }
-
-        if (name.endsWith('.csproj')) {
-            return 'csproj';
-        }
-
-        return 'excluded';
-    });
-
-    if (Array.isArray(grouped.csproj) && grouped.csproj.length > 0) {
-        return join(grouped.csproj[0].parentPath, grouped.csproj[0].name);
-    }
-
-    if (!Array.isArray(grouped.directories) || grouped.directories.length === 0) {
-        return [];
-    }
-
-    const results: string[] = [];
-
-    for (const element of grouped.directories) {
-        const subResult = await findCsprojFiles(join(element.parentPath, element.name));
-
-        if (typeof subResult === 'string') {
-            results.push(subResult);
-        } else if (Array.isArray(subResult)) {
-            results.push(...subResult);
-        }
-    }
-
-    return results;
-}
+import { findFileByExtension } from '../../common/findFileByExtension';
 
 function extractVersionFromParsedProject(parsed: any): string | null {
     if (!parsed) return null;
@@ -56,7 +17,7 @@ function extractVersionFromParsedProject(parsed: any): string | null {
     if (!propertyGroups) return null;
 
     const isPackable = propertyGroups.IsPackable ?? propertyGroups.isPackable;
-    if (!isStringNullOrWhitespace(isPackable) && ignoreCaseCompare(isPackable, 'false')) {
+    if (ignoreCaseCompare(isPackable, 'false')) {
         return null;
     }
 
@@ -108,15 +69,13 @@ async function createOutput(files: string[]) {
 
 const sourceDir = resolve(getInput('source_dir', process.cwd()));
 
-info(`SourceDir: ${sourceDir}`);
-
-findCsprojFiles(sourceDir)
+findFileByExtension(sourceDir, '.csproj')
     .then(files => {
-        if (!Array.isArray(files) && files.length === 0) {
+        if (!Array.isArray(files) || files.length === 0) {
             throw new Error('No .csproj files found.');
         }
 
-        return (files as string[]);
+        return files as string[];
     })
     .then(createOutput)
     .catch(err => {

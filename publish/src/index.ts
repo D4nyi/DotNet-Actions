@@ -16,8 +16,6 @@ interface Inputs {
 async function nugetPackage(): Promise<void> {
     const slnFile = await findFileByExtension(process.cwd(), '.slnx');
 
-    info(`Sln file: (${typeof slnFile})${JSON.stringify(slnFile)}`);
-
     if (typeof slnFile !== 'string') {
         throw new Error('No .slnx file found in the repository.');
     }
@@ -27,8 +25,6 @@ async function nugetPackage(): Promise<void> {
 }
 
 async function nugetPush(): Promise<void> {
-    await checkDotNet();
-
     const nugetKey = getRequiredInput('nuget_api_key');
     setSecret(nugetKey);
 
@@ -68,25 +64,33 @@ async function createTag(): Promise<void> {
 
     const createRef = getOctokit(githubToken).rest.git.createRef;
 
-    for (const [key, value] of Object.entries(versions)) {
-        if (!value) {
+    const entries = Object.entries(versions);
+
+    const singlePackage = entries.length === 1;
+
+    for (const [project, version] of entries) {
+        if (!isStringNullOrWhitespace(version)) {
+            warning(`Package ('${project}') version is not defined: ${version}.`);
             continue;
         }
 
-        const packageTags = tags['__names__'] || tags[key];
+        const packageTags = singlePackage ? tags['__names__'] : tags[project];
 
         if (!Array.isArray(packageTags) || packageTags.length === 0) {
-            warning(`Package tags for '${key}' is not an array or is empty.`);
+            warning(`Package tags for '${project}' is not an array or is empty.`);
             continue;
         }
 
-        const ref = `refs/tags/${key}/v${value}`;
-        const exists = packageTags.includes(ref);
+        const exists = packageTags.includes(version);
 
         if (exists) {
-            info(`Tag exists: ${ref}`);
+            info(`Tag exists: ${version}`);
             continue;
         }
+
+        const ref = singlePackage
+            ? `refs/tags/${project}/v${version}`
+            : `refs/tags/v${version}`;
 
         try {
             const { status, data } = await createRef({
@@ -112,6 +116,5 @@ checkDotNet()
     .then(nugetPush)
     .then(createTag)
     .catch((err: Error) => {
-        warning(err);
         setFailed(`Action failed with error: ${err}`);
     });

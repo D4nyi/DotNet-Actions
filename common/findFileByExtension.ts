@@ -5,12 +5,14 @@ export async function findFileByExtension(dir: string, extension: string): Promi
     const elements = await readdir(dir, { withFileTypes: true });
 
     const grouped = Object.groupBy(elements, element => {
-        if (element.name.endsWith(extension)) {
-            return 'files';
+        const name = element.name;
+
+        if (name !== 'bin' && name !== 'obj' && name !== '.git' && element.isDirectory()) {
+            return 'directories';
         }
 
-        if (element.name !== 'bin' && element.name !== 'obj' && element.isDirectory()) {
-            return 'directories';
+        if (name.endsWith(extension)) {
+            return 'files';
         }
 
         return 'excluded';
