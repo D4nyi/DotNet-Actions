@@ -26,8 +26,6 @@ async function getTags(): Promise<void> {
         throw new Error(`Failed to fetch tags: ${status}`);
     }
 
-    info(`Response: ${JSON.stringify(data, null, 2)}`);
-
     const tags = data.reduce((acc, tag) => {
         let prefix: string;
         let version: string;
@@ -53,7 +51,6 @@ async function getTags(): Promise<void> {
         return acc;
     }, {} as Tags);
 
-    info(`Status: ${status}`);
     info(`Tags: ${JSON.stringify(tags, null, 2)}`);
 
     setOutput('tags', tags);
