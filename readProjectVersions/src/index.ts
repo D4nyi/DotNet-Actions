@@ -2,10 +2,10 @@ import { info, warning, setFailed, setOutput } from '@actions/core';
 import { readFile } from 'node:fs/promises';
 import { sep, resolve } from 'node:path';
 import { XMLParser } from 'fast-xml-parser';
-import { ignoreCaseCompare } from '../../common/stringUtils';
 import { Versions } from '../../common/types';
 import { getInput } from '../../common/getInput';
 import { findFileByExtension } from '../../common/findFileByExtension';
+import { isStringNullOrWhitespace } from '../../common/stringUtils';
 
 function extractVersionFromParsedProject(parsed: any): string | null {
     if (!parsed) return null;
@@ -17,7 +17,7 @@ function extractVersionFromParsedProject(parsed: any): string | null {
     if (!propertyGroups) return null;
 
     const isPackable = propertyGroups.IsPackable ?? propertyGroups.isPackable;
-    if (ignoreCaseCompare(isPackable, 'false')) {
+    if (!isStringNullOrWhitespace(isPackable) && isPackable.toLowerCase() === 'false') {
         return null;
     }
 
@@ -50,12 +50,15 @@ function getFileName(filePath: string): string {
 async function createOutput(files: string[]) {
     const versions: Versions = {};
 
+    let count = 0;
+
     for (const file of files) {
         const version = await getVersionFromCsproj(file);
 
         const fileName = getFileName(file);
 
         if (version) {
+            count++;
             versions[fileName] = version;
         } else {
             warning(`${fileName} -> Version: (not found)`);
@@ -63,6 +66,10 @@ async function createOutput(files: string[]) {
     }
 
     info(`Versions: ${JSON.stringify(versions, undefined, 2)}`);
+
+    if (count === 0) {
+        throw new Error('No project version(s) read!')
+    }
 
     setOutput('versions', JSON.stringify(versions));
 }

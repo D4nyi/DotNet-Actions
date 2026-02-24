@@ -87,12 +87,7 @@ async function createTag(): Promise<void> {
 
         const packageTags = singlePackage ? tags['__names__'] : tags[project];
 
-        if (!Array.isArray(packageTags) || packageTags.length === 0) {
-            warning(`Package tags for '${project}' is not an array or is empty.`);
-            continue;
-        }
-
-        const exists = packageTags.includes(`v${version}`);
+        const exists = packageTags?.includes(`v${version}`) || false;
 
         if (exists) {
             info(`Tag exists: v${version}`);

@@ -8,7 +8,3 @@
 export function isStringNullOrWhitespace(value: unknown): boolean {
     return Object.prototype.toString.call(value) !== '[object String]' || (value as string).trim() === '';
 }
-
-export function ignoreCaseCompare(s1: string, s2: string): boolean {
-    return s1.localeCompare(s2, undefined, { sensitivity: 'accent' }) === 0;
-}
