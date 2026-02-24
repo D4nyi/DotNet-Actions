@@ -10,7 +10,7 @@ export function isString(value: unknown): boolean {
 }
 
 /**
- * Checks whether the specified `value` is null or an empty string ("").
+ * Checks whether the specified `value` is null or an empty string ('').
  *
  * @static
  * @param {unknown} value The value to check.
@@ -21,7 +21,7 @@ export function isStringNullOrEmpty(value: unknown): boolean {
 }
 
 /**
- * Checks whether the specified `value` is null or an empty string ("") or only consists of whitespace characters.
+ * Checks whether the specified `value` is null or an empty string ('') or only consists of whitespace characters.
  *
  * @static
  * @param {unknown} value The value to check.

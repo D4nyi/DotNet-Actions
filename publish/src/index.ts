@@ -1,11 +1,11 @@
-import { info, warning, setFailed, setSecret } from "@actions/core";
-import { context, getOctokit } from "@actions/github";
-import { exec } from "@actions/exec";
-import { Versions, Tags } from "../../common/types.js";
-import { isStringNullOrWhitespace } from "../../common/stringUtils.js";
-import { checkDotNet } from "../../common/checkDotNet.js";
-import { findFileByExtension } from "../../common/findFileByExtension.js";
-import { getRequiredInput } from "../../common/getInput.js";
+import { info, warning, setFailed, setSecret } from '@actions/core';
+import { context, getOctokit } from '@actions/github';
+import { exec } from '@actions/exec';
+import { Versions, Tags } from '../../common/types.js';
+import { isStringNullOrWhitespace } from '../../common/stringUtils.js';
+import { checkDotNet } from '../../common/checkDotNet.js';
+import { findFileByExtension } from '../../common/findFileByExtension.js';
+import { getRequiredInput } from '../../common/getInput.js';
 
 interface Inputs {
     versions: Versions;
@@ -14,17 +14,16 @@ interface Inputs {
 }
 
 async function nugetPackage(): Promise<void> {
-    const slnFile = await findFileByExtension(process.cwd(), ".slnx");
+    const slnFile = await findFileByExtension(process.cwd(), '.slnx');
 
     info(`Sln file: (${typeof slnFile})${JSON.stringify(slnFile)}`);
 
-    if (typeof slnFile !== "string") {
-        setFailed("No .slnx file found in the repository.");
-        return;
+    if (typeof slnFile !== 'string') {
+        throw new Error('No .slnx file found in the repository.');
     }
 
-    await exec("dotnet", ["restore", slnFile]);
-    await exec("dotnet", ["pack", slnFile, "--no-restore", "--nologo", "-o", "output", "-c", "Release"]);
+    await exec('dotnet', ['restore', slnFile]);
+    await exec('dotnet', ['pack', slnFile, '--no-restore', '--nologo', '-o', 'output', '-c', 'Release']);
 }
 
 async function nugetPush(): Promise<void> {
@@ -37,21 +36,21 @@ async function nugetPush(): Promise<void> {
         throw new Error('NuGet API key is invalid.');
     }
 
-    await exec("dotnet", ["nuget", "push", "output/*", "--skip-duplicate", "--source", "https://api.nuget.org/v3/index.json", "--api-key", nugetKey]);
+    await exec('dotnet', ['nuget', 'push', 'output/*', '--api-key', nugetKey, '--source', 'https://api.nuget.org/v3/index.json', '--skip-duplicate']);
 }
 
 function parseInputs(): Inputs {
-    const versionsRaw = getInput('versions', { required: true });
+    const versionsRaw = getRequiredInput('versions');
     if (isStringNullOrWhitespace(versionsRaw)) {
         throw new Error('Versions input is invalid.');
     }
 
-    const tagsRaw = getInput('tags', { required: true });
+    const tagsRaw = getRequiredInput('tags');
     if (isStringNullOrWhitespace(tagsRaw)) {
         throw new Error('Tags input is invalid.');
     }
 
-    const githubToken = getInput('github_token', { required: true });
+    const githubToken = getRequiredInput('github_token');
     setSecret(githubToken);
     if (isStringNullOrWhitespace(githubToken)) {
         throw new Error('GitHub token is invalid.');
@@ -112,6 +111,7 @@ checkDotNet()
     .then(nugetPackage)
     .then(nugetPush)
     .then(createTag)
-    .catch(err => {
+    .catch((err: Error) => {
+        warning(err);
         setFailed(`Action failed with error: ${err}`);
     });

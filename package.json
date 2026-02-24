@@ -1,32 +1,34 @@
 {
-  "name": "dotnet-workflows",
-  "version": "1.0.0",
-  "description": "",
-  "type": "commonjs",
-  "engines": {
-    "node": ">=24.0.0"
-  },
-  "keywords": [
-    "actions",
-    "dotnet",
-    "setup"
-  ],
-  "author": "Dániel Szöllősi",
-  "license": "MIT",
-  "scripts": {
-    "build:prod": "node scripts/build-actions.mjs production",
-    "build:dev": "node scripts/build-actions.mjs development",
-    "run:local": "act workflow_dispatch -s github_token=secret -P ubuntu-latest=node:24-trixie"
-  },
-  "dependencies": {
-    "@actions/core": "^3.0.0",
-    "@actions/exec": "^3.0.0",
-    "@actions/github": "^9.0.0",
-    "fast-xml-parser": "^5.3.7"
-  },
-  "devDependencies": {
-    "@types/node": "^24.10.13",
-    "esbuild": "^0.27.3",
-    "typescript": "^5.9.3"
-  }
+    "name": "dotnet-workflows",
+    "version": "1.0.0",
+    "description": "",
+    "type": "commonjs",
+    "engines": {
+        "node": ">=24.0.0"
+    },
+    "keywords": [
+        "actions",
+        "dotnet",
+        "setup"
+    ],
+    "author": "Dániel Szöllősi",
+    "license": "MIT",
+    "scripts": {
+        "build:prod": "node scripts/build-actions.mjs production",
+        "build:dev": "node scripts/build-actions.mjs development",
+        "run:local": "act workflow_dispatch -s github_token=secret -P ubuntu-latest=node:24-trixie",
+        "lint": "eslint",
+        "lint:fix": "eslint --fix"
+    },
+    "dependencies": {
+        "@actions/core": "^3.0.0",
+        "@actions/exec": "^3.0.0",
+        "@actions/github": "^9.0.0",
+        "fast-xml-parser": "^5.3.7"
+    },
+    "devDependencies": {
+        "@types/node": "^24.10.13",
+        "esbuild": "^0.27.3",
+        "typescript": "^5.9.3"
+    }
 }

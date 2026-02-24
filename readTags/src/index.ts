@@ -1,57 +1,52 @@
-import { info, setOutput, setFailed, setSecret } from "@actions/core";
-import { context, getOctokit } from "@actions/github";
-import { isStringNullOrWhitespace } from "../../common/stringUtils.js";
-import { Tags } from "../../common/types.js";
-import { getRequiredInput } from "../../common/getInput.js";
+import { info, setOutput, setFailed, setSecret } from '@actions/core';
+import { context, getOctokit } from '@actions/github';
+import { isStringNullOrWhitespace } from '../../common/stringUtils.js';
+import { Tags } from '../../common/types.js';
+import { getRequiredInput } from '../../common/getInput.js';
 
 async function getTags(): Promise<void> {
     if (context.eventName !== 'workflow_dispatch') {
-        info("Not on workflow_dispatch event, skipping tag retrieval.");
-        return;
+        throw new Error('Not on workflow_dispatch event, skipping tag retrieval.');
     }
 
     const token = getRequiredInput('github_token');
     setSecret(token);
-
     if (isStringNullOrWhitespace(token)) {
-        throw new Error("GitHub token is invalid.");
+        throw new Error('GitHub token is invalid.');
     }
 
     const octokit = getOctokit(token);
 
-    try {
-        const { status, data } = await octokit.rest.repos.listTags({
-            owner: context.repo.owner,
-            repo: context.repo.repo
-        });
+    const { status, data } = await octokit.rest.repos.listTags({
+        owner: context.repo.owner,
+        repo: context.repo.repo
+    });
 
-        if (status < 200 || status > 299) {
-            setFailed(`Failed to fetch tags: ${status}`);
-            return;
+    if (status < 200 || status > 299) {
+        throw new Error(`Failed to fetch tags: ${status}`);
+    }
+
+    info(`Response: ${JSON.stringify(data, null, 2)}`);
+
+    const tags = data.reduce((acc, tag) => {
+        const split = tag.name.split('/');
+
+        const prefix = split[0];
+        const version = split[1];
+
+        if (acc[prefix]) {
+            acc[prefix].push(version);
+        } else {
+            acc[prefix] = [version];
         }
 
-        const tags = data.reduce((acc, tag) => {
-            const split = tag.name.split('/');
+        return acc;
+    }, {} as Tags);
 
-            const prefix = split[0];
-            const version = split[1];
+    info(`Status: ${status}`);
+    info(`Tags: ${JSON.stringify(tags, null, 2)}`);
 
-            if (acc[prefix]) {
-                acc[prefix].push(version);
-            } else {
-                acc[prefix] = [version];
-            }
-
-            return acc;
-        }, {} as Tags);
-
-        info(`Status: ${status}`);
-        info(`Tags: ${JSON.stringify(tags, null, 2)}`);
-
-        setOutput("tags", tags);
-    } catch (error) {
-        setFailed(error.message);
-    }
+    setOutput('tags', tags);
 }
 
 getTags()

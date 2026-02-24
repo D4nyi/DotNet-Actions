@@ -1,27 +1,26 @@
-import { info, warning, setFailed, setOutput } from "@actions/core";
+import { info, warning, setFailed, setOutput } from '@actions/core';
 import { readdir, readFile } from 'node:fs/promises';
 import { sep, join, resolve } from 'node:path';
 import { XMLParser } from 'fast-xml-parser';
-import { ignoreCaseCompare, isStringNullOrWhitespace } from "../../common/stringUtils";
-import { Versions } from "../../common/types";
-import { getInput } from "../../common/getInput";
-import { exec } from "@actions/exec";
+import { ignoreCaseCompare, isStringNullOrWhitespace } from '../../common/stringUtils';
+import { Versions } from '../../common/types';
+import { getInput } from '../../common/getInput';
 
 async function findCsprojFiles(dir: string): Promise<string | string[]> {
-    await exec(`ls -lah ${dir}`);
-
     const elements = await readdir(dir, { withFileTypes: true });
 
     const grouped = Object.groupBy(elements, element => {
-        if (element.name.endsWith(".csproj")) {
-            return "csproj";
+        const name = element.name;
+
+        if (name !== 'bin' && name !== 'obj' && name !== '.git' && element.isDirectory()) {
+            return 'directories';
         }
 
-        if (element.name !== "bin" && element.name !== "obj" && element.isDirectory()) {
-            return "directories";
+        if (name.endsWith('.csproj')) {
+            return 'csproj';
         }
 
-        return "excluded";
+        return 'excluded';
     });
 
     if (Array.isArray(grouped.csproj) && grouped.csproj.length > 0) {
@@ -37,7 +36,7 @@ async function findCsprojFiles(dir: string): Promise<string | string[]> {
     for (const element of grouped.directories) {
         const subResult = await findCsprojFiles(join(element.parentPath, element.name));
 
-        if (typeof subResult === "string") {
+        if (typeof subResult === 'string') {
             results.push(subResult);
         } else if (Array.isArray(subResult)) {
             results.push(...subResult);
@@ -57,7 +56,7 @@ function extractVersionFromParsedProject(parsed: any): string | null {
     if (!propertyGroups) return null;
 
     const isPackable = propertyGroups.IsPackable ?? propertyGroups.isPackable;
-    if (!isStringNullOrWhitespace(isPackable) && ignoreCaseCompare(isPackable, "false")) {
+    if (!isStringNullOrWhitespace(isPackable) && ignoreCaseCompare(isPackable, 'false')) {
         return null;
     }
 

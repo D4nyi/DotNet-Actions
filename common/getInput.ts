@@ -1,4 +1,4 @@
-import { getInput as _getInput } from "@actions/core";
+import { getInput as _getInput } from '@actions/core';
 
 export function getRequiredInput(key: string): string {
     return _getInput(key, { required: true });
