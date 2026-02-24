@@ -29,10 +29,20 @@ async function getTags(): Promise<void> {
     info(`Response: ${JSON.stringify(data, null, 2)}`);
 
     const tags = data.reduce((acc, tag) => {
-        const split = tag.name.split('/');
+        let prefix: string;
+        let version: string;
 
-        const prefix = split[0];
-        const version = split[1];
+        const name = tag.name;
+
+        if (!name.includes('/')) {
+            prefix = '__names__';
+            version = name;
+        } else {
+            const split = tag.name.split('/');
+
+            prefix = split[0];
+            version = split[1];
+        }
 
         if (acc[prefix]) {
             acc[prefix].push(version);

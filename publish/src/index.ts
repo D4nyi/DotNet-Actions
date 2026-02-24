@@ -73,7 +73,7 @@ async function createTag(): Promise<void> {
             continue;
         }
 
-        const packageTags = tags[key];
+        const packageTags = tags['__names__'] || tags[key];
 
         if (!Array.isArray(packageTags) || packageTags.length === 0) {
             warning(`Package tags for '${key}' is not an array or is empty.`);
