@@ -69,7 +69,7 @@ async function createTag(): Promise<void> {
     const singlePackage = entries.length === 1;
 
     for (const [project, version] of entries) {
-        if (!isStringNullOrWhitespace(version)) {
+        if (isStringNullOrWhitespace(version)) {
             warning(`Package ('${project}') version is not defined: ${version}.`);
             continue;
         }
