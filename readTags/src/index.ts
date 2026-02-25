@@ -1,8 +1,10 @@
-import { info, setOutput, setFailed, setSecret } from '@actions/core';
+import { info, setFailed, setSecret } from '@actions/core';
 import { context, getOctokit } from '@actions/github';
 import { isStringNullOrWhitespace } from '../../common/stringUtils.js';
 import { Tags } from '../../common/types.js';
 import { getRequiredInput } from '../../common/getInput.js';
+import { join } from 'node:path';
+import { writeFile } from 'node:fs/promises';
 
 async function getTags(): Promise<void> {
     if (context.eventName !== 'workflow_dispatch') {
@@ -53,8 +55,14 @@ async function getTags(): Promise<void> {
 
     info(`Tags: ${JSON.stringify(tags, null, 2)}`);
 
-    setOutput('tags', tags);
-    process.env.tags = JSON.stringify(tags);
+    const tagsFilePath = join(process.cwd(), 'tags.json');
+
+    await writeFile(tagsFilePath, JSON.stringify(tags), {
+        encoding: 'utf-8',
+        flush: true,
+        flag: 'w',
+        signal: AbortSignal.timeout(2000)
+    });
 }
 
 getTags()

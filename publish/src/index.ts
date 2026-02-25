@@ -6,7 +6,8 @@ import { isStringNullOrWhitespace } from '../../common/stringUtils.js';
 import { checkDotNet } from '../../common/checkDotNet.js';
 import { findFileByExtension } from '../../common/findFileByExtension.js';
 import { getRequiredInput } from '../../common/getInput.js';
-import { readdir } from 'node:fs/promises';
+import { readdir, readFile } from 'node:fs/promises';
+import { join } from 'node:path';
 
 interface Inputs {
     versions: Versions;
@@ -46,19 +47,21 @@ async function nugetPush(): Promise<void> {
     }
 }
 
-function parseInputs(): Inputs {
-    const envTags = process.env.tags;
+async function parseInputs(): Promise<Inputs> {
+    const tagsFilePath = join(process.cwd(), 'tags.json');
+    const tagsRaw = await readFile(tagsFilePath, {
+        encoding: 'utf-8',
+        flag: 'r',
+        signal: AbortSignal.timeout(2000)
+    });
 
-    info(`Env Tags ${envTags}`);
+    if (isStringNullOrWhitespace(tagsRaw)) {
+        throw new Error('Tags input is invalid.');
+    }
 
     const versionsRaw = getRequiredInput('versions');
     if (isStringNullOrWhitespace(versionsRaw)) {
         throw new Error('Versions input is invalid.');
-    }
-
-    const tagsRaw = getRequiredInput('tags');
-    if (isStringNullOrWhitespace(tagsRaw)) {
-        throw new Error('Tags input is invalid.');
     }
 
     const githubToken = getRequiredInput('github_token');
@@ -75,7 +78,7 @@ function parseInputs(): Inputs {
 }
 
 async function createTag(): Promise<void> {
-    const { versions, tags, githubToken } = parseInputs();
+    const { versions, tags, githubToken } = await parseInputs();
 
     const createRef = getOctokit(githubToken).rest.git.createRef;
 
