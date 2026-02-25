@@ -1,5 +1,5 @@
 import { build } from 'esbuild';
-import { access, mkdir, constants } from 'node:fs/promises';
+import { access, mkdir, constants, unlink } from 'node:fs/promises';
 import { resolve, join } from 'node:path';
 
 const mode = process.argv[2] === 'production' ? 'production' : 'development';
@@ -7,7 +7,6 @@ const minify = mode === 'production';
 const sourcemap = mode === 'development';
 
 const actions = [
-    'package',
     'publish',
     'readProjectVersions',
     'readTags',
@@ -26,16 +25,24 @@ async function exists(path) {
 for (const name of actions) {
     const entry = resolve(name, 'src', 'index.ts');
 
-    if (!exists(entry)) {
+    if (!(await exists(entry))) {
         // skip missing action folders
-        // eslint-disable-next-line no-console
         console.warn(`Skipping ${name}: entry not found at ${entry}`);
         continue;
     }
 
     const outdir = resolve(name, 'dist');
-    await mkdir(outdir, { recursive: true });
+    if (!(await exists(outdir))) {
+        await mkdir(outdir, { recursive: true });
+    }
     const outfile = join(outdir, 'index.js');
+
+    const sourcemapPath = join(outdir, 'index.js.map');
+    if (!sourcemap && (await exists(sourcemapPath))) {
+        await unlink(sourcemapPath);
+    }
+
+    const tsConfigPath = resolve('.', 'tsconfig.json');
 
     console.log(`Building ${name} -> ${outfile} (${mode})`);
 
@@ -45,19 +52,22 @@ for (const name of actions) {
             bundle: true,
             platform: 'node',
             target: 'node24',
-            format: 'esm',
+            format: 'cjs',
+            external: ['node:path', 'node:fs', 'node:fs/promises'],
             outfile,
             sourcemap,
             minify,
-            logLevel: 'info'
+            logLevel: 'info',
+            allowOverwrite: true,
+            charset: 'utf8',
+            treeShaking: true,
+            tsconfig: tsConfigPath,
+            write: true
         });
     } catch (err) {
-        // eslint-disable-next-line no-console
         console.error(`Failed to build ${name}:`, err);
         process.exitCode = 1;
     }
 }
 
-// indicate success
-// eslint-disable-next-line no-console
 console.log('Build complete');

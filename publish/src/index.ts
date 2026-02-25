@@ -1,10 +1,13 @@
-import { debug, info, warning, getInput, setFailed, setSecret } from "@actions/core";
-import { context, getOctokit } from "@actions/github";
-import { exec } from "@actions/exec";
-import { resolve, } from 'node:path';
-import { DefaultArtifactClient, type DownloadArtifactOptions, type FindOptions } from '@actions/artifact'
-import { Versions, Tags } from "../../common/types.js";
-import { isStringNullOrWhitespace } from "../../common/stringUtils.js";
+import { info, warning, setFailed, setSecret } from '@actions/core';
+import { context, getOctokit } from '@actions/github';
+import { exec } from '@actions/exec';
+import { Versions, Tags } from '../../common/types.js';
+import { isStringNullOrWhitespace } from '../../common/stringUtils.js';
+import { checkDotNet } from '../../common/checkDotNet.js';
+import { findFileByExtension } from '../../common/findFileByExtension.js';
+import { getRequiredInput } from '../../common/getInput.js';
+import { readdir, readFile } from 'node:fs/promises';
+import { join } from 'node:path';
 
 interface Inputs {
     versions: Versions;
@@ -12,76 +15,50 @@ interface Inputs {
     githubToken: string;
 }
 
-async function runDotNet() {
-    const dotnetInstalled = await exec("which dotnet", null!, { ignoreReturnCode: true });
+async function hasSymbolPackage() {
+    return (await readdir('output')).some(el => el.endsWith('.snupkg'));
+}
 
-    info(`.NET Installed: ${!dotnetInstalled}`);
+async function nugetPackage(): Promise<void> {
+    const slnFile = await findFileByExtension(process.cwd(), '.slnx');
 
-    if (dotnetInstalled !== 0) {
-        throw new Error(".NET CLI is not installed or not found in PATH.");
+    if (typeof slnFile !== 'string') {
+        throw new Error('No .slnx file found in the repository.');
     }
 
-    const nugetKey = getInput('nuget_api_key', { required: true });
+    await exec('dotnet', ['restore', slnFile]);
+    await exec('dotnet', ['build', slnFile, '--no-restore', '--nologo', '-c', 'Release']);
+    await exec('dotnet', ['pack', slnFile, '--no-restore', '--no-build', '--nologo', '-o', 'output', '-c', 'Release']);
+}
+
+async function nugetPush(): Promise<void> {
+    const nugetKey = getRequiredInput('nuget_api_key');
     setSecret(nugetKey);
 
     if (isStringNullOrWhitespace(nugetKey)) {
         throw new Error('NuGet API key is invalid.');
     }
 
-    await exec("dotnet", ["nuget", "push", "output/*.nupkg", "--skip-duplicate", "--source", "https://api.nuget.org/v3/index.json", "--api-key", nugetKey]);
-}
+    await exec('dotnet', ['nuget', 'push', 'output/*.nupkg', '--api-key', nugetKey, '--source', 'https://api.nuget.org/v3/index.json', '--skip-duplicate']);
 
-async function downloadArtifact(): Promise<void> {
-    const artifactId = getInput('artifact_id', { required: true });
-    const artifactDigest = getInput('artifact_digest', { required: false });
-
-    const numericId = parseInt(artifactId, 10);
-    if (isNaN(numericId)) {
-        throw new Error(`Invalid artifact ID: '${artifactId}'. Must be a number.`)
+    const hasSymbol = await hasSymbolPackage();
+    if (hasSymbol) {
+        await exec('dotnet', ['nuget', 'push', 'output/*.snupkg', '--api-key', nugetKey, '--source', 'https://symbols.nuget.org/download/symbols', '--skip-duplicate']);
     }
-
-    const resolvedPath = resolve('./output')
-    debug(`Resolved path is ${resolvedPath}`)
-
-    const options: DownloadArtifactOptions & FindOptions = {
-        path: resolvedPath,
-        expectedHash: artifactDigest,
-        skipDecompress: false,
-        findBy: {
-            token: null!, // Not needed for artifacts within the same run
-            workflowRunId: context.runId,
-            repositoryOwner: context.repo.owner,
-            repositoryName: context.repo.repo,
-        }
-    }
-
-    const artifact = new DefaultArtifactClient();
-
-    const result = await artifact.downloadArtifact(numericId, options);
-
-    if (result.digestMismatch) {
-        warning(`Artifact '${artifactId}' digest validation failed. Please verify the integrity of the artifact.`);
-    }
-
-    if (result.downloadPath != resolvedPath) {
-        warning(`Downloaded path '${result.downloadPath}' does not match the expected path '${resolvedPath}'. This may indicate an issue with artifact download.`);
-    }
-
-    info('Download artifact has finished successfully')
 }
 
 function parseInputs(): Inputs {
-    const versionsRaw = getInput('versions', { required: true });
+    const versionsRaw = getRequiredInput('versions');
     if (isStringNullOrWhitespace(versionsRaw)) {
         throw new Error('Versions input is invalid.');
     }
-    
-    const tagsRaw = getInput('tags', { required: true });
+
+    const tagsRaw = getRequiredInput('tags');
     if (isStringNullOrWhitespace(tagsRaw)) {
         throw new Error('Tags input is invalid.');
     }
 
-    const githubToken = getInput('github_token', { required: true });
+    const githubToken = getRequiredInput('github_token');
     setSecret(githubToken);
     if (isStringNullOrWhitespace(githubToken)) {
         throw new Error('GitHub token is invalid.');
@@ -94,30 +71,33 @@ function parseInputs(): Inputs {
     };
 }
 
-async function createTag() {
+async function createTag(): Promise<void> {
     const { versions, tags, githubToken } = parseInputs();
 
     const createRef = getOctokit(githubToken).rest.git.createRef;
 
-    for (const [key, value] of Object.entries(versions)) {
-        if (!value) {
+    const entries = Object.entries(versions);
+
+    const singlePackage = entries.length === 1;
+
+    for (const [project, version] of entries) {
+        if (isStringNullOrWhitespace(version)) {
+            warning(`Package ('${project}') version is not defined: ${version}.`);
             continue;
         }
 
-        const packageTags = tags[key];
+        const packageTags = singlePackage ? tags['__names__'] : tags[project];
 
-        if (!Array.isArray(packageTags) || packageTags.length === 0) {
-            warning(`Package tags for '${key}' is not an array or is empty.`);
-            continue;
-        }
-
-        const ref = `refs/tags/${key}/v${value}`;
-        const exists = packageTags.includes(ref);
+        const exists = packageTags?.includes(`v${version}`) || false;
 
         if (exists) {
-            info(`Tag exists: ${ref}`);
+            info(`Tag exists: v${version}`);
             continue;
         }
+
+        const ref = singlePackage
+            ? `refs/tags/v${version}`
+            : `refs/tags/${project}/v${version}`;
 
         try {
             const { status, data } = await createRef({
@@ -138,9 +118,10 @@ async function createTag() {
     }
 }
 
-downloadArtifact()
-    .then(runDotNet)
+checkDotNet()
+    .then(nugetPackage)
+    .then(nugetPush)
     .then(createTag)
-    .catch(err => {
+    .catch((err: Error) => {
         setFailed(`Action failed with error: ${err}`);
     });

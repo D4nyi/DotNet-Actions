@@ -7,7 +7,7 @@ on:
   push:
     branches:
       - main
-      - 'feature/**'
+      - "feature/**"
     paths-ignore:
       - .editorconfig
       - .gitattributes
@@ -16,10 +16,11 @@ on:
       - package-lock.json
       - LICENSE
       - README
+      - "**/dist/**"
   pull_request:
     branches:
       - main
-      - 'feature/**'
+      - "feature/**"
     paths-ignore:
       - .editorconfig
       - .gitattributes
@@ -28,8 +29,9 @@ on:
       - package-lock.json
       - LICENSE
       - README
+      - "**/dist/**"
   schedule:
-    - cron: '0 0 * * *'
+    - cron: "0 0 * * *"
 
 jobs:
   analyze:
@@ -56,7 +58,7 @@ jobs:
         with:
           languages: ${{ matrix.language }}
           build-mode: ${{ matrix.build-mode }}
-          dependency-caching: true
+          config-file: "./.github/workflows/codeql.yml"
 
       - name: Perform CodeQL Analysis
         uses: github/codeql-action/analyze@v4

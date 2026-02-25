@@ -2,7 +2,7 @@ name: Run Tests
 description: Runs tests for the project.
 
 inputs:
-  build-configuration:
+  build_configuration:
     description: Build configuration (e.g., Debug, Release)
     required: false
     default: Debug

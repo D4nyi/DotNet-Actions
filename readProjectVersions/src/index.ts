@@ -1,45 +1,11 @@
-import { info, warning, setFailed, getInput, setOutput } from "@actions/core";
-import { readdirSync, readFileSync } from 'node:fs';
-import { sep, join } from 'node:path';
+import { info, warning, setFailed, setOutput } from '@actions/core';
+import { readFile } from 'node:fs/promises';
+import { sep, resolve } from 'node:path';
 import { XMLParser } from 'fast-xml-parser';
-
-function findCsprojFiles(dir: string): string | string[] {
-    const elements = readdirSync(dir, { withFileTypes: true });
-
-    const grouped = Object.groupBy(elements, element => {
-        if (element.name.endsWith(".csproj")) {
-            return "csproj";
-        }
-
-        if (element.name !== "bin" && element.name !== "obj" && element.isDirectory()) {
-            return "directories";
-        }
-
-        return "excluded";
-    });
-
-    if (Array.isArray(grouped.csproj) && grouped.csproj.length > 0) {
-        return join(grouped.csproj[0].parentPath, grouped.csproj[0].name);
-    }
-
-    if (!Array.isArray(grouped.directories) || grouped.directories.length === 0) {
-        return [];
-    }
-
-    const results: string[] = [];
-
-    for (const element of grouped.directories) {
-        const subResult = findCsprojFiles(join(element.parentPath, element.name));
-
-        if (typeof subResult === "string") {
-            results.push(subResult);
-        } else if (Array.isArray(subResult)) {
-            results.push(...subResult);
-        }
-    }
-
-    return results;
-}
+import { Versions } from '../../common/types';
+import { getInput } from '../../common/getInput';
+import { findFileByExtension } from '../../common/findFileByExtension';
+import { isStringNullOrWhitespace } from '../../common/stringUtils';
 
 function extractVersionFromParsedProject(parsed: any): string | null {
     if (!parsed) return null;
@@ -50,12 +16,17 @@ function extractVersionFromParsedProject(parsed: any): string | null {
     const propertyGroups = project.PropertyGroup ?? project.propertyGroup;
     if (!propertyGroups) return null;
 
+    const isPackable = propertyGroups.IsPackable ?? propertyGroups.isPackable;
+    if (!isStringNullOrWhitespace(isPackable) && isPackable.toLowerCase() === 'false') {
+        return null;
+    }
+
     return propertyGroups.Version ?? propertyGroups.version;
 }
 
-function getVersionFromCsproj(filePath: string): string | null {
+async function getVersionFromCsproj(filePath: string): Promise<string | null> {
     try {
-        const xml = readFileSync(filePath, 'utf-8');
+        const xml = await readFile(filePath, 'utf-8');
         const parser = new XMLParser({ ignoreAttributes: true });
         const parsed = parser.parse(xml);
         return extractVersionFromParsedProject(parsed);
@@ -76,29 +47,44 @@ function getFileName(filePath: string): string {
     return filePath.substring(slash + 1, dot);
 }
 
-const sourceDir = getInput('source_dir') || process.cwd();
+async function createOutput(files: string[]) {
+    const versions: Versions = {};
 
-const files = findCsprojFiles(sourceDir);
+    let count = 0;
 
-if (files.length === 0) {
-    setFailed('No .csproj files found.');
-    process.exit(1);
-}
+    for (const file of files) {
+        const version = await getVersionFromCsproj(file);
 
-const versions: { [key: string]: string } = {};
+        const fileName = getFileName(file);
 
-for (const file of files) {
-    const version = getVersionFromCsproj(file);
-
-    const fileName = getFileName(file);
-
-    if (version) {
-        info(`${fileName} -> Version: ${version}`);
-
-        versions[fileName] = version;
-    } else {
-        warning(`${fileName} -> Version: (not found)`);
+        if (version) {
+            count++;
+            versions[fileName] = version;
+        } else {
+            warning(`${fileName} -> Version: (not found)`);
+        }
     }
+
+    info(`Versions: ${JSON.stringify(versions, undefined, 2)}`);
+
+    if (count === 0) {
+        throw new Error('No project version(s) read!')
+    }
+
+    setOutput('versions', JSON.stringify(versions));
 }
 
-setOutput('versions', JSON.stringify(versions));
+const sourceDir = resolve(getInput('source_dir', process.cwd()));
+
+findFileByExtension(sourceDir, '.csproj')
+    .then(files => {
+        if (!Array.isArray(files) || files.length === 0) {
+            throw new Error('No .csproj files found.');
+        }
+
+        return files as string[];
+    })
+    .then(createOutput)
+    .catch(err => {
+        setFailed(`Action failed with error: ${err}`);
+    });
