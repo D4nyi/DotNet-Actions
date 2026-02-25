@@ -47,6 +47,10 @@ async function nugetPush(): Promise<void> {
 }
 
 function parseInputs(): Inputs {
+    const envTags = process.env.tags;
+
+    info(`Env Tags ${envTags}`);
+
     const versionsRaw = getRequiredInput('versions');
     if (isStringNullOrWhitespace(versionsRaw)) {
         throw new Error('Versions input is invalid.');

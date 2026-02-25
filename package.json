@@ -16,7 +16,6 @@
     "scripts": {
         "build:prod": "node scripts/build-actions.mjs production",
         "build:dev": "node scripts/build-actions.mjs development",
-        "run:local": "act workflow_dispatch -s github_token=secret -P ubuntu-latest=node:24-trixie",
         "lint": "eslint",
         "lint:fix": "eslint --fix"
     },

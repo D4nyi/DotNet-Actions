@@ -54,6 +54,7 @@ async function getTags(): Promise<void> {
     info(`Tags: ${JSON.stringify(tags, null, 2)}`);
 
     setOutput('tags', tags);
+    process.env.tags = JSON.stringify(tags);
 }
 
 getTags()
