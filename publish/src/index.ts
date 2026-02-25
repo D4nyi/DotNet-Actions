@@ -47,21 +47,15 @@ async function nugetPush(): Promise<void> {
     }
 }
 
-async function parseInputs(): Promise<Inputs> {
-    const tagsFilePath = join(process.cwd(), 'tags.json');
-    const tagsRaw = await readFile(tagsFilePath, {
-        encoding: 'utf-8',
-        flag: 'r',
-        signal: AbortSignal.timeout(2000)
-    });
-
-    if (isStringNullOrWhitespace(tagsRaw)) {
-        throw new Error('Tags input is invalid.');
-    }
-
+function parseInputs(): Inputs {
     const versionsRaw = getRequiredInput('versions');
     if (isStringNullOrWhitespace(versionsRaw)) {
         throw new Error('Versions input is invalid.');
+    }
+
+    const tagsRaw = getRequiredInput('tags');
+    if (isStringNullOrWhitespace(tagsRaw)) {
+        throw new Error('Tags input is invalid.');
     }
 
     const githubToken = getRequiredInput('github_token');
@@ -78,7 +72,7 @@ async function parseInputs(): Promise<Inputs> {
 }
 
 async function createTag(): Promise<void> {
-    const { versions, tags, githubToken } = await parseInputs();
+    const { versions, tags, githubToken } = parseInputs();
 
     const createRef = getOctokit(githubToken).rest.git.createRef;
 
