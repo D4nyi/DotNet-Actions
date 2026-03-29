@@ -15,19 +15,17 @@
     "license": "MIT",
     "scripts": {
         "build:prod": "node scripts/build-actions.mjs production",
-        "build:dev": "node scripts/build-actions.mjs development",
-        "lint": "eslint",
-        "lint:fix": "eslint --fix"
+        "build:dev": "node scripts/build-actions.mjs development"
     },
     "dependencies": {
         "@actions/core": "^3.0.0",
         "@actions/exec": "^3.0.0",
         "@actions/github": "^9.0.0",
-        "fast-xml-parser": "^5.3.7"
+        "fast-xml-parser": "^5.5.9"
     },
     "devDependencies": {
-        "@types/node": "^24.10.13",
-        "esbuild": "^0.27.3",
-        "typescript": "^5.9.3"
+        "@types/node": "^24.12.0",
+        "esbuild": "^0.27.4",
+        "typescript": "^6.0.2"
     }
 }
