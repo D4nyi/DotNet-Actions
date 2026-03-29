@@ -1,8 +1,9 @@
-import { info, setOutput, setFailed, setSecret } from '@actions/core';
+import { info, setOutput, setSecret } from '@actions/core';
 import { context, getOctokit } from '@actions/github';
-import { isStringNullOrWhitespace } from '../../common/stringUtils.js';
-import { Tags } from '../../common/types.js';
-import { getRequiredInput } from '../../common/getInput.js';
+import { isNullOrWhitespace } from '@common/stringUtils.js';
+import { Tags } from '@common/types.js';
+import { getRequiredInput } from '@common/getInput.js';
+import { errorHandler } from '@common/errorHandler.js';
 
 async function getTags(): Promise<void> {
     if (context.eventName !== 'workflow_dispatch') {
@@ -11,7 +12,7 @@ async function getTags(): Promise<void> {
 
     const token = getRequiredInput('github_token');
     setSecret(token);
-    if (isStringNullOrWhitespace(token)) {
+    if (isNullOrWhitespace(token)) {
         throw new Error('GitHub token is invalid.');
     }
 
@@ -26,7 +27,7 @@ async function getTags(): Promise<void> {
         throw new Error(`Failed to fetch tags: ${status}`);
     }
 
-    const tags = data.reduce((acc, tag) => {
+    const tags = data.reduce<Tags>((acc, tag) => {
         let prefix: string;
         let version: string;
 
@@ -38,25 +39,22 @@ async function getTags(): Promise<void> {
         } else {
             const split = tag.name.split('/');
 
-            prefix = split[0];
-            version = split[1];
+            prefix = split[0]!;
+            version = split[1]!;
         }
 
-        if (acc[prefix]) {
-            acc[prefix].push(version);
+        if (prefix in acc) {
+            acc[prefix]!.push(version);
         } else {
             acc[prefix] = [version];
         }
 
         return acc;
-    }, {} as Tags);
+    }, {});
 
     info(`Tags: ${JSON.stringify(tags, null, 2)}`);
 
     setOutput('tags', JSON.stringify(tags));
 }
 
-getTags()
-    .catch(err => {
-        setFailed(`Action failed with error: ${err}`);
-    });
+getTags().catch(errorHandler);

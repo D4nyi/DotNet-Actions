@@ -1,36 +1,35 @@
-import { info, warning, setFailed, setOutput } from '@actions/core';
+import { info, warning, setOutput } from '@actions/core';
 import { readFile } from 'node:fs/promises';
 import { sep, resolve } from 'node:path';
 import { XMLParser } from 'fast-xml-parser';
-import { Versions } from '../../common/types';
-import { getInput } from '../../common/getInput';
-import { findFileByExtension } from '../../common/findFileByExtension';
-import { isStringNullOrWhitespace } from '../../common/stringUtils';
+import { Versions } from '@common/types';
+import { getInput } from '@common/getInput';
+import { findFileByExtension } from '@common/findFileByExtension';
+import { isNotNullOrWhitespace } from '@common/stringUtils';
+import { Csproj } from '@common/types.js';
+import { errorHandler } from '@common/errorHandler.js';
 
-function extractVersionFromParsedProject(parsed: any): string | null {
-    if (!parsed) return null;
-
-    const project = parsed.Project ?? parsed.project;
-    if (!project) return null;
-
-    const propertyGroups = project.PropertyGroup ?? project.propertyGroup;
-    if (!propertyGroups) return null;
-
-    const isPackable = propertyGroups.IsPackable ?? propertyGroups.isPackable;
-    if (!isStringNullOrWhitespace(isPackable) && isPackable.toLowerCase() === 'false') {
+function extractVersionFromParsedProject(parsed: Csproj | undefined): string | null | undefined {
+    const propertyGroups = parsed?.Project?.PropertyGroup;
+    if (!propertyGroups) {
         return null;
     }
 
-    return propertyGroups.Version ?? propertyGroups.version;
+    const isPackable = propertyGroups.IsPackable;
+    if (!isNotNullOrWhitespace(isPackable) || isPackable.toLowerCase() === 'false') {
+        return null;
+    }
+
+    return propertyGroups.Version;
 }
 
-async function getVersionFromCsproj(filePath: string): Promise<string | null> {
+async function getVersionFromCsproj(filePath: string): Promise<string | null | undefined> {
     try {
         const xml = await readFile(filePath, 'utf-8');
         const parser = new XMLParser({ ignoreAttributes: true });
-        const parsed = parser.parse(xml);
+        const parsed = parser.parse(xml) as (Csproj | undefined);
         return extractVersionFromParsedProject(parsed);
-    } catch (err) {
+    } catch (err: unknown) {
         warning(`Failed to parse ${filePath}: ${err}`);
         return null;
     }
@@ -82,9 +81,7 @@ findFileByExtension(sourceDir, '.csproj')
             throw new Error('No .csproj files found.');
         }
 
-        return files as string[];
+        return files;
     })
     .then(createOutput)
-    .catch(err => {
-        setFailed(`Action failed with error: ${err}`);
-    });
+    .catch(errorHandler);

@@ -1,13 +1,13 @@
-import { info, warning, setFailed, setSecret } from '@actions/core';
+import { info, warning, setSecret } from '@actions/core';
 import { context, getOctokit } from '@actions/github';
 import { exec } from '@actions/exec';
-import { Versions, Tags } from '../../common/types.js';
-import { isStringNullOrWhitespace } from '../../common/stringUtils.js';
-import { checkDotNet } from '../../common/checkDotNet.js';
-import { findFileByExtension } from '../../common/findFileByExtension.js';
-import { getRequiredInput } from '../../common/getInput.js';
-import { readdir, readFile } from 'node:fs/promises';
-import { join } from 'node:path';
+import { Versions, Tags } from '@common/types.js';
+import { isNullOrWhitespace } from '@common/stringUtils.js';
+import { checkDotNet } from '@common/checkDotNet.js';
+import { findFileByExtension } from '@common/findFileByExtension.js';
+import { getRequiredInput } from '@common/getInput.js';
+import { readdir } from 'node:fs/promises';
+import { errorHandler, getErrorMessage } from '@common/errorHandler.js';
 
 interface Inputs {
     versions: Versions;
@@ -15,8 +15,9 @@ interface Inputs {
     githubToken: string;
 }
 
-async function hasSymbolPackage() {
-    return (await readdir('output')).some(el => el.endsWith('.snupkg'));
+async function hasSymbolPackage(): Promise<boolean> {
+    const outputFiles: string[] = await readdir('output');
+    return outputFiles.some(el => el.endsWith('.snupkg'));
 }
 
 async function nugetPackage(): Promise<void> {
@@ -35,7 +36,7 @@ async function nugetPush(): Promise<void> {
     const nugetKey = getRequiredInput('nuget_api_key');
     setSecret(nugetKey);
 
-    if (isStringNullOrWhitespace(nugetKey)) {
+    if (isNullOrWhitespace(nugetKey)) {
         throw new Error('NuGet API key is invalid.');
     }
 
@@ -49,24 +50,24 @@ async function nugetPush(): Promise<void> {
 
 function parseInputs(): Inputs {
     const versionsRaw = getRequiredInput('versions');
-    if (isStringNullOrWhitespace(versionsRaw)) {
+    if (isNullOrWhitespace(versionsRaw)) {
         throw new Error('Versions input is invalid.');
     }
 
     const tagsRaw = getRequiredInput('tags');
-    if (isStringNullOrWhitespace(tagsRaw)) {
+    if (isNullOrWhitespace(tagsRaw)) {
         throw new Error('Tags input is invalid.');
     }
 
     const githubToken = getRequiredInput('github_token');
     setSecret(githubToken);
-    if (isStringNullOrWhitespace(githubToken)) {
+    if (isNullOrWhitespace(githubToken)) {
         throw new Error('GitHub token is invalid.');
     }
 
     return {
-        versions: JSON.parse(versionsRaw),
-        tags: JSON.parse(tagsRaw),
+        versions: JSON.parse(versionsRaw) as Versions,
+        tags: JSON.parse(tagsRaw) as Tags,
         githubToken
     };
 }
@@ -81,14 +82,14 @@ async function createTag(): Promise<void> {
     const singlePackage = entries.length === 1;
 
     for (const [project, version] of entries) {
-        if (isStringNullOrWhitespace(version)) {
+        if (isNullOrWhitespace(version)) {
             warning(`Package ('${project}') version is not defined: ${version}.`);
             continue;
         }
 
         const packageTags = singlePackage ? tags['__names__'] : tags[project];
 
-        const exists = packageTags?.includes(`v${version}`) || false;
+        const exists = packageTags?.includes(`v${version}`) ?? false;
 
         if (exists) {
             info(`Tag exists: v${version}`);
@@ -112,8 +113,9 @@ async function createTag(): Promise<void> {
             } else {
                 info(`Created tag with ref: ${data.ref}`);
             }
-        } catch (error) {
-            warning(`Error creating tag: '${ref}'; error: ${error}`);
+        } catch (error: unknown) {
+            const message = getErrorMessage(error);
+            warning(`Error creating tag: '${ref}'; error: ${message}`);
         }
     }
 }
@@ -122,6 +124,4 @@ checkDotNet()
     .then(nugetPackage)
     .then(nugetPush)
     .then(createTag)
-    .catch((err: Error) => {
-        setFailed(`Action failed with error: ${err}`);
-    });
+    .catch(errorHandler);

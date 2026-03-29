@@ -2,7 +2,7 @@ import { readdir } from 'node:fs/promises';
 import { join } from 'node:path';
 
 export async function findFileByExtension(dir: string, extension: string): Promise<string | string[] | null> {
-    const elements = await readdir(dir, { withFileTypes: true });
+    const elements = await readdir(dir, { withFileTypes: true, encoding: 'utf-8' });
 
     const grouped = Object.groupBy(elements, element => {
         const name = element.name;
@@ -11,7 +11,7 @@ export async function findFileByExtension(dir: string, extension: string): Promi
             return 'directories';
         }
 
-        if (name.endsWith(extension)) {
+        if (element.isFile() && name.endsWith(extension)) {
             return 'files';
         }
 
@@ -19,7 +19,8 @@ export async function findFileByExtension(dir: string, extension: string): Promi
     });
 
     if (Array.isArray(grouped.files) && grouped.files.length > 0) {
-        return join(grouped.files[0].parentPath, grouped.files[0].name);
+        const firstFile = grouped.files[0]!;
+        return join(firstFile.parentPath, firstFile.name);
     }
 
     if (!Array.isArray(grouped.directories) || grouped.directories.length === 0) {
