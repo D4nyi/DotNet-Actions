@@ -1,10 +1,15 @@
 /**
- * Checks whether the specified `value` is null or an empty string ('') or only consists of whitespace characters.
+ * Checks whether the specified `value` is null or an empty string ("") or only consists of whitespace characters.
  *
  * @static
- * @param {unknown} value The value to check.
+ * @param {string|null|undefined} value The value to check.
  * @returns {boolean} Returns `true` if `value` parameter is null or an empty string or only consists of whitespace characters; otherwise `false`.
  */
-export function isStringNullOrWhitespace(value: unknown): boolean {
-    return Object.prototype.toString.call(value) !== '[object String]' || (value as string).trim() === '';
+export function isNullOrWhitespace(value: string | null | undefined): boolean {
+    return value == null || value.trim() === '';
+}
+
+
+export function isNotNullOrWhitespace(value: string | null | undefined): value is string {
+    return !isNullOrWhitespace(value);
 }
